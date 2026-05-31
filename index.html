@@ -117,11 +117,9 @@
 
   <!-- Mes trades personnels -->
   <div class="box">
-    <div class="box-title">Mes trades personnels <em>à venir</em></div>
-    <div class="coming-soon">
-      <span>📋</span>
-      <p>Tes trades personnels apparaîtront ici prochainement.</p>
-    </div>
+    <div class="box-title">Mes trades personnels <em id="p-tp"></em></div>
+    <div class="t-hdr"><div>Date</div><div>Résultat</div><div>Direction</div><div>Détails</div><div style="text-align:right">Issue</div></div>
+    <div id="p-list"><div class="empty">Aucun trade encore — commence à trader !</div></div>
   </div>
 
   <div class="disc">
@@ -134,6 +132,10 @@
 const SB = supabase.createClient(
   'https://qtqjzwfnsjzosqzwwyfc.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0cWp6d2Zuc2p6b3Nxend3eWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3OTg3NzYsImV4cCI6MjA5MzM3NDc3Nn0.FbT9YyxAZjIVbng7jpFi4ZsVe-T43KdEozuSkOKZruU'
+);
+const SB2 = supabase.createClient(
+  'https://cvggxktybzbrtskcwlxp.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2Z2d4a3R5YnpicnRza2N3bHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODM2MjcsImV4cCI6MjA4OTg1OTYyN30.cfHsAvmgcXYvedCz1fZCHlxOApupKCxnt8t9e8KzNBs'
 );
 
 const s = n => (n >= 0 ? '+' : '') + n.toFixed(2);
@@ -193,8 +195,31 @@ async function load() {
   }).join('');
 }
 
+async function loadPersonal() {
+  const { data: pt } = await SB2.from('personal_trades')
+    .select('trade_date,result,direction,details')
+    .gte('trade_date','2026-06-01')
+    .order('trade_date',{ascending:false}).limit(30);
+  const t = pt || [];
+  document.getElementById('p-tp').textContent = t.length ? '(' + t.length + ' trades)' : '';
+  const list = document.getElementById('p-list');
+  if (!t.length) { list.innerHTML = '<div class="empty">Aucun trade encore — commence à trader !</div>'; return; }
+  list.innerHTML = t.map(x => {
+    const isWin = x.result === 'gagnant';
+    const date = x.trade_date ? new Date(x.trade_date).toLocaleDateString('fr-FR') : '—';
+    return `<div class="t-row">
+      <div class="t-date">${date}</div>
+      <div class="t-dir ${x.direction==='BUY'?'b':'s'}">${x.direction||'—'}</div>
+      <div class="t-p">${x.details||'—'}</div>
+      <div></div>
+      <div class="t-pnl ${isWin?'pos':'neg'}" style="font-size:13px;">${isWin?'✅ Gagné':'❌ Perdu'}</div>
+    </div>`;
+  }).join('');
+}
+
 load();
-setInterval(load, 60000);
+loadPersonal();
+setInterval(()=>{ load(); loadPersonal(); }, 60000);
 </script>
 </body>
 </html>
