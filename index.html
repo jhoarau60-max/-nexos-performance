@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexos Trade — Performance Bots</title>
+  <meta name="description" content="Résultats réels des bots de trading Nexos Trade — Gold Bot et Nexus Bot. Capital 100$, rendement, win rate en direct.">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080c10;
+      --gold: #FFD700;
+      --green: #00d4aa;
+      --red: #ff4d6d;
+      --text: #ffffff;
+      --muted: rgba(255,255,255,0.4);
+      --border: rgba(255,255,255,0.08);
+      --card: rgba(255,255,255,0.04);
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+    /* Background */
+    body::before { content:''; position:fixed; inset:0; background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255,215,0,0.06) 0%, transparent 70%); pointer-events:none; z-index:0; }
+
+    /* Navbar */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(8,12,16,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+    .nav-inner { max-width: 960px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
+    .nav-logo span { color: var(--gold); }
+    .nav-badge { font-size: 10px; font-weight: 700; padding: 4px 10px; background: rgba(0,212,170,0.12); border: 1px solid rgba(0,212,170,0.25); border-radius: 20px; color: var(--green); letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+    .live-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.5s infinite; }
+
+    /* Page */
+    .page { max-width: 960px; margin: 0 auto; padding: 100px 24px 80px; position: relative; z-index:1; }
+
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 48px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,212,170,0.08); border: 1px solid rgba(0,212,170,0.2); border-radius: 20px; padding: 6px 16px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--green); text-transform: uppercase; margin-bottom: 20px; }
+    h1 { font-size: clamp(28px, 5vw, 46px); font-weight: 800; margin-bottom: 12px; }
+    h1 span { color: var(--gold); }
+    .hero-sub { color: var(--muted); font-size: 15px; max-width: 500px; margin: 0 auto; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 36px; flex-wrap: wrap; }
+    .tab { padding: 10px 24px; border-radius: 30px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; }
+    .tab.active { background: rgba(255,215,0,0.1); border-color: rgba(255,215,0,0.35); color: var(--gold); }
+    .tab:hover:not(.active) { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
+
+    /* Sections */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px 18px; text-align: center; transition: border-color .2s; }
+    .kpi:hover { border-color: rgba(255,255,255,0.15); }
+    .kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px; }
+    .kpi-val { font-size: 28px; font-weight: 800; font-family: 'DM Mono', monospace; }
+    .kpi-val.green { color: var(--green); }
+    .kpi-val.red { color: var(--red); }
+    .kpi-val.white { color: #fff; }
+    .kpi-hint { font-size: 10px; color: rgba(255,255,255,0.2); margin-top: 5px; font-family: 'DM Mono', monospace; }
+
+    /* Extrap */
+    .extrap { background: rgba(255,215,0,0.04); border: 1px solid rgba(255,215,0,0.1); border-radius: 16px; padding: 24px; margin-bottom: 28px; }
+    .extrap-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); margin-bottom: 16px; }
+    .extrap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+    .extrap-card { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 14px 10px; text-align: center; }
+    .extrap-base { font-size: 12px; color: rgba(255,255,255,0.35); margin-bottom: 5px; font-family: 'DM Mono', monospace; }
+    .extrap-val { font-size: 19px; font-weight: 700; font-family: 'DM Mono', monospace; }
+    .extrap-note { font-size: 9px; color: rgba(255,255,255,0.18); margin-top: 3px; }
+
+    /* Trades */
+    .trades-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+    .trades-head { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .trades-head em { font-style: normal; font-size: 11px; color: var(--muted); font-weight: 400; }
+    .t-row { display: grid; grid-template-columns: 72px 75px 1fr 1fr 88px; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .t-row.hdr { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; }
+    .t-row:last-child { border-bottom: none; }
+    .t-date { font-size: 11px; color: rgba(255,255,255,0.3); font-family: 'DM Mono', monospace; }
+    .t-dir { font-weight: 700; font-size: 12px; font-family: 'DM Mono', monospace; }
+    .t-dir.b { color: var(--green); }
+    .t-dir.s { color: var(--gold); }
+    .t-price { font-size: 11px; color: rgba(255,255,255,0.45); font-family: 'DM Mono', monospace; }
+    .t-pnl { font-weight: 700; font-size: 12px; font-family: 'DM Mono', monospace; text-align: right; }
+    .t-pnl.p { color: var(--green); }
+    .t-pnl.n { color: var(--red); }
+    .empty { text-align: center; color: rgba(255,255,255,0.2); font-size: 13px; padding: 36px 0; }
+
+    /* Update */
+    .upd { text-align: center; font-size: 11px; color: rgba(255,255,255,0.2); font-family: 'DM Mono', monospace; margin-bottom: 12px; }
+
+    /* Disclaimer */
+    .disc { text-align: center; font-size: 10px; color: rgba(255,255,255,0.15); line-height: 1.8; margin-top: 44px; }
+
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    @media (max-width: 600px) {
+      .t-row { grid-template-columns: 60px 60px 1fr 70px; }
+      .t-row > div:nth-child(3) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">NEXOS <span>TRADE</span></div>
+    <div class="nav-badge"><span class="live-dot"></span> Live</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="hero">
+    <div class="hero-badge"><span class="live-dot"></span> Résultats en direct</div>
+    <h1>Performance <span>Juin 2026</span></h1>
+    <p class="hero-sub">Capital de départ 100 $ par bot — données réelles, mises à jour toutes les minutes</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="show('gold',0)">🥇 Gold Bot Solix</div>
+    <div class="tab" onclick="show('nexus',1)">📊 Nexus Bot</div>
+  </div>
+
+  <!-- GOLD -->
+  <div class="section active" id="s-gold">
+    <p class="upd" id="upd-gold"></p>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Capital actuel</div><div class="kpi-val white" id="g-cap">—</div><div class="kpi-hint">base 100 $</div></div>
+      <div class="kpi"><div class="kpi-label">Rendement</div><div class="kpi-val" id="g-rnd">—</div><div class="kpi-hint">depuis juin 2026</div></div>
+      <div class="kpi"><div class="kpi-label">P&L total</div><div class="kpi-val" id="g-pnl">—</div><div class="kpi-hint">en dollars</div></div>
+      <div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-val white" id="g-wr">—</div><div class="kpi-hint" id="g-tc">— trades</div></div>
+    </div>
+    <div class="extrap">
+      <div class="extrap-head">💡 Si vous aviez investi...</div>
+      <div class="extrap-grid">
+        <div class="extrap-card"><div class="extrap-base">500 $</div><div class="extrap-val" id="ge-500">—</div><div class="extrap-note">profit estimé</div></div>
+        <div class="extrap-card"><div class="extrap-base">1 000 $</div><div class="extrap-val" id="ge-1000">—</div><div class="extrap-note">profit estimé</div></div>
+        <div class="extrap-card"><div class="extrap-base">5 000 $</div><div class="extrap-val" id="ge-5000">—</div><div class="extrap-note">profit estimé</div></div>
+        <div class="extrap-card"><div class="extrap-base">10 000 $</div><div class="extrap-val" id="ge-10000">—</div><div class="extrap-note">profit estimé</div></div>
+      </div>
+    </div>
+    <div class="trades-box">
+      <div class="trades-head">Derniers trades <em id="g-tp"></em></div>
+      <div class="t-row hdr"><div>Date</div><div>Dir.</div><div>Entrée</div><div>Sortie</div><div style="text-align:right">P&L</div></div>
+      <div id="g-list"><div class="empty">Chargement...</div></div>
+    </div>
+  </div>
+
+  <!-- NEXUS -->
+  <div class="section" id="s-nexus">
+    <p class="upd" id="upd-nexus"></p>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Capital actuel</div><div class="kpi-val white" id="n-cap">—</div><div class="kpi-hint">base 100 $</div></div>
+      <div class="kpi"><div class="kpi-label">Rendement</div><div class="kpi-val" id="n-rnd">—</div><div class="kpi-hint">depuis juin 2026</div></div>
+      <div class="kpi"><div class="kpi-label">P&L total</div><div class="kpi-val" id="n-pnl">—</div><div class="kpi-hint">en dollars</div></div>
+      <div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-val white" id="n-wr">—</div><div class="kpi-hint" id="n-tc">— trades</div></div>
+    </div>
+    <div class="extrap">
+      <div class="extrap-head">💡 Si vous aviez investi...</div>
+      <div class="extrap-grid">
+        <div class="extrap-card"><div class="extrap-base">500 $</div><div class="extrap-val" id="ne-500">—</div><div class="extrap-note">profit estimé</div></div>
+        <div class="extrap-card"><div class="extrap-base">1 000 $</div><div class="extrap-val" id="ne-1000">—</div><div class="extrap-note">profit estimé</div></div>
+        <div class="extrap-card"><div class="extrap-base">5 000 $</div><div class="extrap-val" id="ne-5000">—</div><div class="extrap-note">profit estimé</div></div>
+        <div class="extrap-card"><div class="extrap-base">10 000 $</div><div class="extrap-val" id="ne-10000">—</div><div class="extrap-note">profit estimé</div></div>
+      </div>
+    </div>
+    <div class="trades-box">
+      <div class="trades-head">Derniers trades <em id="n-tp"></em></div>
+      <div class="t-row hdr"><div>Date</div><div>Dir.</div><div>Paire</div><div>Sortie</div><div style="text-align:right">P&L</div></div>
+      <div id="n-list"><div class="empty">Chargement...</div></div>
+    </div>
+  </div>
+
+  <div class="disc">
+    Les performances passées ne garantissent pas les résultats futurs.<br>
+    Capital simulé de base 100 $ par bot depuis juin 2026. Les % sont extrapolables proportionnellement à votre investissement.
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://qtqjzwfnsjzosqzwwyfc.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0cWp6d2Zuc2p6b3Nxend3eWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3OTg3NzYsImV4cCI6MjA5MzM3NDc3Nn0.FbT9YyxAZjIVbng7jpFi4ZsVe-T43KdEozuSkOKZruU';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const s = n => n >= 0 ? '+' : '';
+const fd = n => s(n) + n.toFixed(2) + ' $';
+const fp = n => s(n) + n.toFixed(2) + '%';
+
+function setKPI(p, cap, pnl, rnd, wr, tc, upd) {
+  document.getElementById(p+'-cap').textContent = cap.toFixed(2) + ' $';
+  const re = document.getElementById(p+'-rnd');
+  re.textContent = fp(rnd);
+  re.className = 'kpi-val ' + (rnd >= 0 ? 'green' : 'red');
+  const pe = document.getElementById(p+'-pnl');
+  pe.textContent = fd(pnl);
+  pe.className = 'kpi-val ' + (pnl >= 0 ? 'green' : 'red');
+  document.getElementById(p+'-wr').textContent = wr.toFixed(1) + '%';
+  document.getElementById(p+'-tc').textContent = tc + ' trades';
+  if (upd) document.getElementById('upd-'+{g:'gold',n:'nexus'}[p]).textContent =
+    'Mis à jour : ' + new Date(upd).toLocaleString('fr-FR');
+  const pct = rnd / 100;
+  [500,1000,5000,10000].forEach(a => {
+    const el = document.getElementById(p+'e-'+a);
+    if (!el) return;
+    const v = a * pct;
+    el.textContent = fd(v);
+    el.style.color = v >= 0 ? 'var(--green)' : 'var(--red)';
+  });
+}
+
+function renderTrades(listId, periodId, trades, showSymbol) {
+  document.getElementById(periodId).textContent = '(' + trades.length + ' derniers)';
+  const el = document.getElementById(listId);
+  if (!trades.length) { el.innerHTML = '<div class="empty">Aucun trade fermé pour le moment.</div>'; return; }
+  el.innerHTML = trades.map(t => {
+    const pnl = parseFloat(t.pnl) || 0;
+    const date = t.closed_at ? new Date(t.closed_at).toLocaleDateString('fr-FR') : '—';
+    const entry = parseFloat(t.price_entry) ? parseFloat(t.price_entry).toFixed(2) : '—';
+    const exit = parseFloat(t.price_exit) ? parseFloat(t.price_exit).toFixed(2) : '—';
+    const dir = (t.direction || 'BUY').toUpperCase();
+    const col3 = showSymbol ? (t.symbol || '—') : entry + ' $';
+    return `<div class="t-row">
+      <div class="t-date">${date}</div>
+      <div class="t-dir ${dir==='BUY'?'b':'s'}">${dir}</div>
+      <div class="t-price">${col3}</div>
+      <div class="t-price">${exit} $</div>
+      <div class="t-pnl ${pnl>=0?'p':'n'}">${fd(pnl)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadGold() {
+  const { data: state } = await sb.from('bot_state').select('capital,total_pnl,updated_at').eq('id',1).single();
+  const { data: trades } = await sb.from('trade_history')
+    .select('direction,price_entry,price_exit,pnl,closed_at')
+    .eq('status','closed').eq('bot','gold')
+    .order('closed_at',{ascending:false}).limit(25);
+  if (!state) return;
+  const cap = parseFloat(state.capital) || 100;
+  const pnl = parseFloat(state.total_pnl) || 0;
+  const rnd = (cap - 100) / 100 * 100;
+  const t = trades || [];
+  const wr = t.length ? t.filter(x=>parseFloat(x.pnl)>0).length/t.length*100 : 0;
+  setKPI('g', cap, pnl, rnd, wr, t.length, state.updated_at);
+  renderTrades('g-list','g-tp', t, false);
+}
+
+async function loadNexus() {
+  const { data: trades } = await sb.from('trade_history')
+    .select('symbol,direction,price_entry,price_exit,pnl,closed_at')
+    .eq('status','closed').eq('bot','nexus')
+    .order('closed_at',{ascending:false}).limit(25);
+  const t = trades || [];
+  const pnl = t.reduce((s,x)=>s+parseFloat(x.pnl||0),0);
+  const cap = 100 + pnl;
+  const rnd = pnl;
+  const wr = t.length ? t.filter(x=>parseFloat(x.pnl)>0).length/t.length*100 : 0;
+  setKPI('n', cap, pnl, rnd, wr, t.length, new Date().toISOString());
+  renderTrades('n-list','n-tp', t, true);
+}
+
+function show(bot, idx) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('s-'+bot).classList.add('active');
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+}
+
+loadGold(); loadNexus();
+setInterval(()=>{ loadGold(); loadNexus(); }, 60000);
+</script>
+</body>
+</html>
