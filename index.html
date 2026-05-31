@@ -145,6 +145,7 @@ async function load() {
   const { data: tr } = await SB.from('trade_history')
     .select('direction,price_entry,price_exit,pnl,closed_at')
     .eq('status','closed').eq('bot','gold')
+    .gte('closed_at','2026-06-01')
     .order('closed_at',{ascending:false}).limit(25);
 
   if (!st) return;
