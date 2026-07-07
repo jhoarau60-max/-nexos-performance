@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --bg:#080c10; --gold:#FFD700; --green:#00d4aa; --red:#ff4d6d; --border:rgba(255,255,255,0.08); --card:rgba(255,255,255,0.04); --muted:rgba(255,255,255,0.4); }
+    :root { --bg:#080c10; --gold:#FFD700; --green:#00d4aa; --red:#ff4d6d; --blue:#3b82f6; --border:rgba(255,255,255,0.08); --card:rgba(255,255,255,0.04); --muted:rgba(255,255,255,0.4); }
     body { background: var(--bg); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; }
     body::before { content:''; position:fixed; inset:0; background: radial-gradient(ellipse 80% 50% at 50% -5%, rgba(255,215,0,0.07) 0%, transparent 65%); pointer-events:none; z-index:0; }
 
@@ -48,6 +48,7 @@
     .box-title { font-size:13px; font-weight:700; color:#fff; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
     .box-title em { font-style:normal; font-size:11px; color:rgba(255,255,255,0.25); font-weight:400; }
 
+    /* Solix table */
     .t-hdr, .t-row { display:grid; grid-template-columns:70px 70px 1fr 1fr 90px; gap:8px; align-items:center; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
     .t-hdr { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.2); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:9px; }
     .t-row:last-child { border-bottom:none; }
@@ -59,15 +60,69 @@
     .t-pnl.pos { color:var(--green); } .t-pnl.neg { color:var(--red); }
     .empty { text-align:center; color:rgba(255,255,255,0.2); font-size:13px; padding:32px 0; }
 
-    .coming-soon { text-align:center; padding:32px; color:rgba(255,255,255,0.2); }
-    .coming-soon span { font-size:28px; display:block; margin-bottom:10px; }
-    .coming-soon p { font-size:13px; }
+    /* Journal section */
+    .j-box { background:rgba(59,130,246,0.04); border:1px solid rgba(59,130,246,0.15); border-radius:14px; padding:20px; margin-bottom:26px; }
+    .j-box .box-title { border-bottom:1px solid rgba(59,130,246,0.1); padding-bottom:14px; margin-bottom:16px; }
+    .btn-add { background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.4); color:var(--blue); font-size:11px; font-weight:700; padding:6px 14px; border-radius:20px; cursor:pointer; letter-spacing:0.5px; transition:all 0.2s; }
+    .btn-add:hover { background:rgba(59,130,246,0.25); }
+
+    .j-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:16px; }
+    .j-kpi { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:14px 12px; text-align:center; }
+    .j-kpi-lbl { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.25); margin-bottom:8px; }
+    .j-kpi-val { font-size:22px; font-weight:800; font-family:'DM Mono',monospace; }
+
+    .j-dist { margin-bottom:16px; }
+    .j-dist-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.2); margin-bottom:8px; }
+    .j-bars { display:flex; gap:6px; flex-wrap:wrap; }
+    .j-bar-item { flex:1; min-width:60px; }
+    .j-bar-label { font-size:9px; font-weight:600; color:rgba(255,255,255,0.35); margin-bottom:4px; display:flex; justify-content:space-between; }
+    .j-bar-track { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; }
+    .j-bar-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+    .fill-sl { background:var(--red); }
+    .fill-tp1 { background:var(--green); }
+    .fill-tp2 { background:#a78bfa; }
+    .fill-tp3 { background:var(--gold); }
+
+    /* Journal table */
+    .j-hdr, .j-row { display:grid; grid-template-columns:72px 48px 52px 90px 80px 110px 80px; gap:6px; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .j-hdr { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.2); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; }
+    .j-row:last-child { border-bottom:none; }
+    .j-cell { font-size:11px; font-family:'DM Mono',monospace; color:rgba(255,255,255,0.5); }
+    .j-cell.date { font-size:10px; color:rgba(255,255,255,0.3); }
+    .j-cell.asset { font-size:11px; font-weight:700; color:rgba(255,255,255,0.7); }
+    .j-cell.dir.b { color:var(--green); font-weight:700; }
+    .j-cell.dir.s { color:var(--gold); font-weight:700; }
+    .j-cell.prices { font-size:10px; color:rgba(255,255,255,0.35); line-height:1.5; }
+    .j-outcome { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; font-family:'DM Mono',monospace; }
+    .oc-sl { background:rgba(255,77,109,0.12); color:var(--red); border:1px solid rgba(255,77,109,0.25); }
+    .oc-tp1 { background:rgba(0,212,170,0.1); color:var(--green); border:1px solid rgba(0,212,170,0.2); }
+    .oc-tp2 { background:rgba(167,139,250,0.1); color:#a78bfa; border:1px solid rgba(167,139,250,0.2); }
+    .oc-tp3 { background:rgba(255,215,0,0.1); color:var(--gold); border:1px solid rgba(255,215,0,0.2); }
+    .j-del { background:none; border:none; color:rgba(255,255,255,0.15); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; transition:color 0.2s; }
+    .j-del:hover { color:var(--red); }
+
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .modal { background:#0f1419; border:1px solid rgba(59,130,246,0.25); border-radius:16px; padding:28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
+    .modal h3 { font-size:16px; font-weight:700; margin-bottom:20px; color:#fff; }
+    .form-row { margin-bottom:14px; }
+    .form-row label { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.35); margin-bottom:6px; }
+    .form-row input, .form-row select { width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-size:13px; padding:10px 12px; font-family:'DM Mono',monospace; outline:none; transition:border 0.2s; }
+    .form-row input:focus, .form-row select:focus { border-color:rgba(59,130,246,0.5); }
+    .form-row select option { background:#0f1419; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-grid .form-row { margin-bottom:0; }
+    .form-actions { display:flex; gap:10px; margin-top:22px; }
+    .btn-save { flex:1; background:var(--blue); border:none; color:#fff; font-size:13px; font-weight:700; padding:12px; border-radius:10px; cursor:pointer; transition:opacity 0.2s; }
+    .btn-save:hover { opacity:0.85; }
+    .btn-cancel { background:rgba(255,255,255,0.06); border:1px solid var(--border); color:rgba(255,255,255,0.5); font-size:13px; font-weight:600; padding:12px 20px; border-radius:10px; cursor:pointer; }
 
     .disc { text-align:center; font-size:10px; color:rgba(255,255,255,0.15); line-height:1.8; margin-top:40px; }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
     @media(max-width:600px){
       .t-hdr, .t-row { grid-template-columns:60px 60px 1fr 80px; }
       .t-hdr > div:nth-child(3), .t-row > div:nth-child(3) { display:none; }
+      .j-hdr, .j-row { grid-template-columns:65px 44px 50px 80px 70px 90px 36px; gap:4px; }
     }
   </style>
 </head>
@@ -89,7 +144,7 @@
     <p class="upd" id="upd-time"></p>
   </div>
 
-  <!-- KPIs -->
+  <!-- KPIs Solix -->
   <div class="kpi-grid">
     <div class="kpi"><div class="kpi-lbl">Capital actuel</div><div class="kpi-val kv-w" id="g-cap">—</div><div class="kpi-hint">base 100 $</div></div>
     <div class="kpi"><div class="kpi-lbl">Rendement</div><div class="kpi-val" id="g-rnd">—</div><div class="kpi-hint">depuis reset</div></div>
@@ -108,23 +163,115 @@
     </div>
   </div>
 
-  <!-- Trades Gold Bot -->
+  <!-- Trades Solix -->
   <div class="box">
     <div class="box-title">Derniers trades Jo Trade / Solix <em id="g-tp"></em></div>
     <div class="t-hdr"><div>Date</div><div>Dir.</div><div>Entrée</div><div>Sortie</div><div style="text-align:right">P&L</div></div>
     <div id="g-list"><div class="empty">Chargement...</div></div>
   </div>
 
-  <!-- Mes trades personnels -->
-  <div class="box">
-    <div class="box-title">Mes trades personnels <em id="p-tp"></em></div>
-    <div class="t-hdr"><div>Date</div><div>Résultat</div><div>Direction</div><div>Détails</div><div style="text-align:right">Issue</div></div>
-    <div id="p-list"><div class="empty">Aucun trade encore — commence à trader !</div></div>
+  <!-- Journal personnel -->
+  <div class="j-box">
+    <div class="box-title">
+      <span>📒 Mon Journal de Trading</span>
+      <button class="btn-add" onclick="openModal()">+ Ajouter trade</button>
+    </div>
+
+    <!-- Stats personnelles -->
+    <div class="j-kpi-grid" id="j-stats">
+      <div class="j-kpi"><div class="j-kpi-lbl">Trades</div><div class="j-kpi-val kv-w">—</div></div>
+      <div class="j-kpi"><div class="j-kpi-lbl">Win Rate</div><div class="j-kpi-val">—</div></div>
+      <div class="j-kpi"><div class="j-kpi-lbl">Gagnants</div><div class="j-kpi-val kv-g">—</div></div>
+      <div class="j-kpi"><div class="j-kpi-lbl">Perdants</div><div class="j-kpi-val kv-r">—</div></div>
+    </div>
+
+    <!-- Distribution TP/SL -->
+    <div class="j-dist">
+      <div class="j-dist-title">Distribution des issues</div>
+      <div class="j-bars" id="j-bars">
+        <div class="j-bar-item"><div class="j-bar-label"><span>SL</span><span id="pct-sl">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-sl" id="bar-sl" style="width:0%"></div></div></div>
+        <div class="j-bar-item"><div class="j-bar-label"><span>TP1</span><span id="pct-tp1">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-tp1" id="bar-tp1" style="width:0%"></div></div></div>
+        <div class="j-bar-item"><div class="j-bar-label"><span>TP2</span><span id="pct-tp2">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-tp2" id="bar-tp2" style="width:0%"></div></div></div>
+        <div class="j-bar-item"><div class="j-bar-label"><span>TP3</span><span id="pct-tp3">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-tp3" id="bar-tp3" style="width:0%"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Tableau journal -->
+    <div class="j-hdr">
+      <div>Date</div><div>Asset</div><div>Dir.</div>
+      <div>Entrée / SL</div><div>TP1→3</div>
+      <div>Issue</div><div></div>
+    </div>
+    <div id="j-list"><div class="empty">Chargement...</div></div>
   </div>
 
   <div class="disc">
     Les performances passées ne garantissent pas les résultats futurs.<br>
     Capital simulé de base 100 $ depuis juin 2026. Les % sont extrapolables proportionnellement.
+  </div>
+</div>
+
+<!-- Modal ajout trade -->
+<div id="modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3>Ajouter un trade</h3>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="form-row">
+        <label>Asset</label>
+        <select id="f-asset">
+          <option value="OR">OR (XAU/USD)</option>
+          <option value="BTC">BTC</option>
+          <option value="EURUSD">EUR/USD</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <label>Direction</label>
+      <select id="f-dir">
+        <option value="BUY">BUY (Achat)</option>
+        <option value="SELL">SELL (Vente)</option>
+      </select>
+    </div>
+    <div class="form-grid" style="margin-top:12px">
+      <div class="form-row">
+        <label>Entrée</label>
+        <input type="number" id="f-entry" step="0.01" placeholder="ex: 4150.24">
+      </div>
+      <div class="form-row">
+        <label>Stop Loss</label>
+        <input type="number" id="f-sl" step="0.01" placeholder="ex: 4130.29">
+      </div>
+      <div class="form-row">
+        <label>TP1</label>
+        <input type="number" id="f-tp1" step="0.01" placeholder="ex: 4170.19">
+      </div>
+      <div class="form-row">
+        <label>TP2</label>
+        <input type="number" id="f-tp2" step="0.01" placeholder="ex: 4190.14">
+      </div>
+      <div class="form-row">
+        <label>TP3</label>
+        <input type="number" id="f-tp3" step="0.01" placeholder="ex: 4210.09">
+      </div>
+      <div class="form-row">
+        <label>Issue finale</label>
+        <select id="f-outcome">
+          <option value="">— En cours —</option>
+          <option value="SL">❌ SL touché</option>
+          <option value="TP1">✅ TP1 touché</option>
+          <option value="TP2">🏆 TP2 touché</option>
+          <option value="TP3">⭐ TP3 touché</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="submitTrade()">Enregistrer</button>
+    </div>
   </div>
 </div>
 
@@ -142,6 +289,7 @@ const s = n => (n >= 0 ? '+' : '') + n.toFixed(2);
 const fd = n => s(n) + ' $';
 const fp = n => s(n) + '%';
 
+/* ── Solix ── */
 async function load() {
   const { data: tr } = await SB.from('trade_history')
     .select('direction,price_entry,price_exit,pnl,closed_at')
@@ -152,16 +300,14 @@ async function load() {
   const t = tr || [];
   const pnl = t.reduce((s,x) => s + parseFloat(x.pnl||0), 0);
   const cap = 100 + pnl;
-  const rnd = pnl; // = rendement% sur base 100$
+  const rnd = pnl;
   const wr = t.length ? t.filter(x => parseFloat(x.pnl) > 0).length / t.length * 100 : 0;
 
   document.getElementById('g-cap').textContent = cap.toFixed(2) + ' $';
   const re = document.getElementById('g-rnd');
-  re.textContent = fp(rnd);
-  re.className = 'kpi-val ' + (rnd >= 0 ? 'kv-g' : 'kv-r');
+  re.textContent = fp(rnd); re.className = 'kpi-val ' + (rnd >= 0 ? 'kv-g' : 'kv-r');
   const pe = document.getElementById('g-pnl');
-  pe.textContent = fd(pnl);
-  pe.className = 'kpi-val ' + (pnl >= 0 ? 'kv-g' : 'kv-r');
+  pe.textContent = fd(pnl); pe.className = 'kpi-val ' + (pnl >= 0 ? 'kv-g' : 'kv-r');
   document.getElementById('g-wr').textContent = wr.toFixed(1) + '%';
   document.getElementById('g-tc').textContent = t.length + ' trades';
 
@@ -173,9 +319,7 @@ async function load() {
     el.style.color = v >= 0 ? 'var(--green)' : 'var(--red)';
   });
 
-  document.getElementById('upd-time').textContent =
-    'Mis à jour : ' + new Date().toLocaleString('fr-FR');
-
+  document.getElementById('upd-time').textContent = 'Mis à jour : ' + new Date().toLocaleString('fr-FR');
   document.getElementById('g-tp').textContent = '(' + t.length + ' derniers)';
   const list = document.getElementById('g-list');
   if (!t.length) { list.innerHTML = '<div class="empty">Aucun trade fermé pour le moment.</div>'; return; }
@@ -195,31 +339,111 @@ async function load() {
   }).join('');
 }
 
+/* ── Journal personnel ── */
 async function loadPersonal() {
   const { data: pt } = await SB2.from('personal_trades')
-    .select('trade_date,result,direction,details')
-    .gte('trade_date','2026-06-01')
-    .order('trade_date',{ascending:false}).limit(30);
+    .select('id,trade_date,direction,asset,entry,sl,tp1,tp2,tp3,outcome')
+    .order('trade_date',{ascending:false}).limit(50);
+
   const t = pt || [];
-  document.getElementById('p-tp').textContent = t.length ? '(' + t.length + ' trades)' : '';
-  const list = document.getElementById('p-list');
-  if (!t.length) { list.innerHTML = '<div class="empty">Aucun trade encore — commence à trader !</div>'; return; }
+  const total = t.length;
+  const closed = t.filter(x => x.outcome);
+  const wins = closed.filter(x => x.outcome !== 'SL').length;
+  const losses = closed.filter(x => x.outcome === 'SL').length;
+  const wr = closed.length ? wins / closed.length * 100 : 0;
+
+  // stats
+  const sg = document.getElementById('j-stats');
+  if (sg) {
+    const vals = sg.querySelectorAll('.j-kpi-val');
+    if (vals[0]) vals[0].textContent = total;
+    if (vals[1]) {
+      vals[1].textContent = closed.length ? wr.toFixed(0) + '%' : '—';
+      vals[1].className = 'j-kpi-val ' + (wr >= 50 ? 'kv-g' : wr > 0 ? 'kv-r' : 'kv-w');
+    }
+    if (vals[2]) vals[2].textContent = wins;
+    if (vals[3]) vals[3].textContent = losses;
+  }
+
+  // distribution bars
+  const counts = { SL:0, TP1:0, TP2:0, TP3:0 };
+  closed.forEach(x => { if (x.outcome && counts[x.outcome] !== undefined) counts[x.outcome]++; });
+  ['SL','TP1','TP2','TP3'].forEach(k => {
+    const pct = closed.length ? (counts[k] / closed.length * 100) : 0;
+    const el = document.getElementById('bar-' + k.toLowerCase());
+    const pe = document.getElementById('pct-' + k.toLowerCase());
+    if (el) el.style.width = pct + '%';
+    if (pe) pe.textContent = pct.toFixed(0) + '%';
+  });
+
+  const list = document.getElementById('j-list');
+  if (!total) { list.innerHTML = '<div class="empty">Aucun trade — clique sur "+ Ajouter trade" pour commencer !</div>'; return; }
+
+  const outcomeLabel = o => {
+    if (!o) return '<span class="j-outcome" style="color:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.08)">En cours</span>';
+    const map = { SL:'oc-sl', TP1:'oc-tp1', TP2:'oc-tp2', TP3:'oc-tp3' };
+    const ico = { SL:'❌', TP1:'✅', TP2:'🏆', TP3:'⭐' };
+    return `<span class="j-outcome ${map[o]||''}">${ico[o]||''} ${o}</span>`;
+  };
+  const fv = v => v ? parseFloat(v).toFixed(2) : '—';
+
   list.innerHTML = t.map(x => {
-    const isWin = x.result === 'gagnant';
-    const date = x.trade_date ? new Date(x.trade_date).toLocaleDateString('fr-FR') : '—';
-    return `<div class="t-row">
-      <div class="t-date">${date}</div>
-      <div class="t-dir ${x.direction==='BUY'?'b':'s'}">${x.direction||'—'}</div>
-      <div class="t-p">${x.details||'—'}</div>
-      <div></div>
-      <div class="t-pnl ${isWin?'pos':'neg'}" style="font-size:13px;">${isWin?'✅ Gagné':'❌ Perdu'}</div>
+    const date = x.trade_date ? new Date(x.trade_date + 'T12:00:00').toLocaleDateString('fr-FR') : '—';
+    const d = (x.direction||'BUY').toUpperCase();
+    const tps = [x.tp1, x.tp2, x.tp3].filter(Boolean).map(v => parseFloat(v).toFixed(2)).join(' / ') || '—';
+    return `<div class="j-row">
+      <div class="j-cell date">${date}</div>
+      <div class="j-cell asset">${x.asset||'—'}</div>
+      <div class="j-cell dir ${d==='BUY'?'b':'s'}">${d}</div>
+      <div class="j-cell prices">${fv(x.entry)}<br><span style="color:var(--red);font-size:9px">SL ${fv(x.sl)}</span></div>
+      <div class="j-cell" style="font-size:10px;color:rgba(255,255,255,0.3);line-height:1.6">${tps}</div>
+      <div>${outcomeLabel(x.outcome)}</div>
+      <div><button class="j-del" onclick="deleteTrade(${x.id})" title="Supprimer">✕</button></div>
     </div>`;
   }).join('');
 }
 
+async function deleteTrade(id) {
+  if (!confirm('Supprimer ce trade ?')) return;
+  await SB2.from('personal_trades').delete().eq('id', id);
+  loadPersonal();
+}
+
+/* ── Modal ── */
+function openModal() {
+  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+  ['f-entry','f-sl','f-tp1','f-tp2','f-tp3'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-outcome').value = '';
+}
+
+async function submitTrade() {
+  const entry = parseFloat(document.getElementById('f-entry').value) || null;
+  const sl    = parseFloat(document.getElementById('f-sl').value)    || null;
+  const tp1   = parseFloat(document.getElementById('f-tp1').value)   || null;
+  const tp2   = parseFloat(document.getElementById('f-tp2').value)   || null;
+  const tp3   = parseFloat(document.getElementById('f-tp3').value)   || null;
+  const outcome = document.getElementById('f-outcome').value || null;
+  const direction = document.getElementById('f-dir').value;
+  const asset     = document.getElementById('f-asset').value;
+  const trade_date = document.getElementById('f-date').value;
+  const result = outcome === 'SL' ? 'perdant' : outcome ? 'gagnant' : 'en cours';
+
+  const { error } = await SB2.from('personal_trades').insert({
+    trade_date, direction, asset, entry, sl, tp1, tp2, tp3, outcome, result,
+    details: `${asset} ${direction} @ ${entry}`
+  });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  closeModal();
+  loadPersonal();
+}
+
 load();
 loadPersonal();
-setInterval(()=>{ load(); loadPersonal(); }, 60000);
+setInterval(() => { load(); loadPersonal(); }, 60000);
 </script>
 </body>
 </html>
