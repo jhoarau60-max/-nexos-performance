@@ -82,11 +82,15 @@
     .fill-tp1 { background:var(--green); }
     .fill-tp2 { background:#a78bfa; }
     .fill-tp3 { background:var(--gold); }
+    .fill-man { background:#fbbf24; }
 
     /* Journal table */
-    .j-hdr, .j-row { display:grid; grid-template-columns:72px 48px 52px 90px 80px 110px 80px; gap:6px; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .j-hdr, .j-row { display:grid; grid-template-columns:72px 48px 52px 90px 75px 100px 75px 40px; gap:6px; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
     .j-hdr { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.2); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; }
     .j-row:last-child { border-bottom:none; }
+    .j-pnl-pos { color:var(--green); font-weight:700; font-size:11px; font-family:'DM Mono',monospace; }
+    .j-pnl-neg { color:var(--red); font-weight:700; font-size:11px; font-family:'DM Mono',monospace; }
+    .oc-man { background:rgba(251,191,36,0.1); color:#fbbf24; border:1px solid rgba(251,191,36,0.25); }
     .j-cell { font-size:11px; font-family:'DM Mono',monospace; color:rgba(255,255,255,0.5); }
     .j-cell.date { font-size:10px; color:rgba(255,255,255,0.3); }
     .j-cell.asset { font-size:11px; font-weight:700; color:rgba(255,255,255,0.7); }
@@ -122,7 +126,7 @@
     @media(max-width:600px){
       .t-hdr, .t-row { grid-template-columns:60px 60px 1fr 80px; }
       .t-hdr > div:nth-child(3), .t-row > div:nth-child(3) { display:none; }
-      .j-hdr, .j-row { grid-template-columns:65px 44px 50px 80px 70px 90px 36px; gap:4px; }
+      .j-hdr, .j-row { grid-template-columns:60px 40px 44px 80px 60px 80px 55px 28px; gap:3px; }
     }
   </style>
 </head>
@@ -193,6 +197,7 @@
         <div class="j-bar-item"><div class="j-bar-label"><span>TP1</span><span id="pct-tp1">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-tp1" id="bar-tp1" style="width:0%"></div></div></div>
         <div class="j-bar-item"><div class="j-bar-label"><span>TP2</span><span id="pct-tp2">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-tp2" id="bar-tp2" style="width:0%"></div></div></div>
         <div class="j-bar-item"><div class="j-bar-label"><span>TP3</span><span id="pct-tp3">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-tp3" id="bar-tp3" style="width:0%"></div></div></div>
+        <div class="j-bar-item"><div class="j-bar-label"><span>Manuel</span><span id="pct-man">0%</span></div><div class="j-bar-track"><div class="j-bar-fill fill-man" id="bar-man" style="width:0%"></div></div></div>
       </div>
     </div>
 
@@ -200,7 +205,7 @@
     <div class="j-hdr">
       <div>Date</div><div>Asset</div><div>Dir.</div>
       <div>Entrée / SL</div><div>TP1→3</div>
-      <div>Issue</div><div></div>
+      <div>Issue</div><div>P&amp;L $</div><div></div>
     </div>
     <div id="j-list"><div class="empty">Chargement...</div></div>
   </div>
@@ -260,12 +265,21 @@
       <div class="form-row">
         <label>Issue finale</label>
         <select id="f-outcome">
-          <option value="">— En cours —</option>
+          <option value="">⏳ En cours</option>
           <option value="SL">❌ SL touché</option>
           <option value="TP1">✅ TP1 touché</option>
           <option value="TP2">🏆 TP2 touché</option>
           <option value="TP3">⭐ TP3 touché</option>
+          <option value="MAN">📤 Profit pris (manuel)</option>
         </select>
+      </div>
+      <div class="form-row">
+        <label>Prix de sortie (si manuel)</label>
+        <input type="number" id="f-exit" step="0.01" placeholder="ex: 4162.50">
+      </div>
+      <div class="form-row">
+        <label>P&amp;L réalisé ($)</label>
+        <input type="number" id="f-pnl" step="0.01" placeholder="ex: 45.20 ou -12.00">
       </div>
     </div>
     <div class="form-actions">
@@ -342,7 +356,7 @@ async function load() {
 /* ── Journal personnel ── */
 async function loadPersonal() {
   const { data: pt } = await SB2.from('personal_trades')
-    .select('id,trade_date,direction,asset,entry,sl,tp1,tp2,tp3,outcome')
+    .select('id,trade_date,direction,asset,entry,sl,tp1,tp2,tp3,outcome,pnl_usd,exit_price')
     .order('trade_date',{ascending:false}).limit(50);
 
   const t = pt || [];
@@ -366,12 +380,12 @@ async function loadPersonal() {
   }
 
   // distribution bars
-  const counts = { SL:0, TP1:0, TP2:0, TP3:0 };
+  const counts = { SL:0, TP1:0, TP2:0, TP3:0, MAN:0 };
   closed.forEach(x => { if (x.outcome && counts[x.outcome] !== undefined) counts[x.outcome]++; });
-  ['SL','TP1','TP2','TP3'].forEach(k => {
+  [['SL','sl'],['TP1','tp1'],['TP2','tp2'],['TP3','tp3'],['MAN','man']].forEach(([k,css]) => {
     const pct = closed.length ? (counts[k] / closed.length * 100) : 0;
-    const el = document.getElementById('bar-' + k.toLowerCase());
-    const pe = document.getElementById('pct-' + k.toLowerCase());
+    const el = document.getElementById('bar-' + css);
+    const pe = document.getElementById('pct-' + css);
     if (el) el.style.width = pct + '%';
     if (pe) pe.textContent = pct.toFixed(0) + '%';
   });
@@ -386,6 +400,10 @@ async function loadPersonal() {
     const d = (x.direction||'BUY').toUpperCase();
     const tps = [x.tp1, x.tp2, x.tp3].filter(Boolean).map(v => parseFloat(v).toFixed(2)).join(' / ') || '—';
     const cur = x.outcome || '';
+    const pnl = x.pnl_usd != null ? parseFloat(x.pnl_usd) : null;
+    const pnlHtml = pnl != null
+      ? `<span class="${pnl >= 0 ? 'j-pnl-pos' : 'j-pnl-neg'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} $</span>`
+      : '<span style="color:rgba(255,255,255,0.15);font-size:10px">—</span>';
     return `<div class="j-row">
       <div class="j-cell date">${date}</div>
       <div class="j-cell asset">${x.asset||'—'}</div>
@@ -398,9 +416,11 @@ async function loadPersonal() {
           <option value="TP1" ${cur==='TP1'?'selected':''}>✅ TP1</option>
           <option value="TP2" ${cur==='TP2'?'selected':''}>🏆 TP2</option>
           <option value="TP3" ${cur==='TP3'?'selected':''}>⭐ TP3</option>
+          <option value="MAN" ${cur==='MAN'?'selected':''}>📤 Manuel</option>
           <option value="SL"  ${cur==='SL' ?'selected':''}>❌ SL</option>
         </select>
       </div>
+      <div>${pnlHtml}</div>
       <div><button class="j-del" onclick="deleteTrade(${x.id})" title="Supprimer">✕</button></div>
     </div>`;
   }).join('');
@@ -413,7 +433,7 @@ async function deleteTrade(id) {
 }
 
 async function updateOutcome(id, outcome) {
-  const result = outcome === 'SL' ? 'perdant' : outcome ? 'gagnant' : 'en_cours';
+  const result = outcome === 'SL' ? 'perdant' : outcome ? 'gagnant' : 'en cours';
   await SB2.from('personal_trades').update({ outcome: outcome || null, result }).eq('id', id);
   loadPersonal();
 }
@@ -425,24 +445,28 @@ function openModal() {
 }
 function closeModal() {
   document.getElementById('modal').style.display = 'none';
-  ['f-entry','f-sl','f-tp1','f-tp2','f-tp3'].forEach(id => document.getElementById(id).value = '');
+  ['f-entry','f-sl','f-tp1','f-tp2','f-tp3','f-exit','f-pnl'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-outcome').value = '';
 }
 
 async function submitTrade() {
-  const entry = parseFloat(document.getElementById('f-entry').value) || null;
-  const sl    = parseFloat(document.getElementById('f-sl').value)    || null;
-  const tp1   = parseFloat(document.getElementById('f-tp1').value)   || null;
-  const tp2   = parseFloat(document.getElementById('f-tp2').value)   || null;
-  const tp3   = parseFloat(document.getElementById('f-tp3').value)   || null;
-  const outcome = document.getElementById('f-outcome').value || null;
-  const direction = document.getElementById('f-dir').value;
-  const asset     = document.getElementById('f-asset').value;
+  const entry      = parseFloat(document.getElementById('f-entry').value) || null;
+  const sl         = parseFloat(document.getElementById('f-sl').value)    || null;
+  const tp1        = parseFloat(document.getElementById('f-tp1').value)   || null;
+  const tp2        = parseFloat(document.getElementById('f-tp2').value)   || null;
+  const tp3        = parseFloat(document.getElementById('f-tp3').value)   || null;
+  const exit_price = parseFloat(document.getElementById('f-exit').value)  || null;
+  const pnl_usd    = parseFloat(document.getElementById('f-pnl').value);
+  const outcome    = document.getElementById('f-outcome').value || null;
+  const direction  = document.getElementById('f-dir').value;
+  const asset      = document.getElementById('f-asset').value;
   const trade_date = document.getElementById('f-date').value;
   const result = outcome === 'SL' ? 'perdant' : outcome ? 'gagnant' : 'en cours';
 
   const { error } = await SB2.from('personal_trades').insert({
     trade_date, direction, asset, entry, sl, tp1, tp2, tp3, outcome, result,
+    exit_price: exit_price || null,
+    pnl_usd: isNaN(pnl_usd) ? null : pnl_usd,
     details: `${asset} ${direction} @ ${entry}`
   });
   if (error) { alert('Erreur : ' + error.message); return; }
