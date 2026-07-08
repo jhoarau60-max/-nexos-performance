@@ -379,25 +379,28 @@ async function loadPersonal() {
   const list = document.getElementById('j-list');
   if (!total) { list.innerHTML = '<div class="empty">Aucun trade — clique sur "+ Ajouter trade" pour commencer !</div>'; return; }
 
-  const outcomeLabel = o => {
-    if (!o) return '<span class="j-outcome" style="color:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.08)">En cours</span>';
-    const map = { SL:'oc-sl', TP1:'oc-tp1', TP2:'oc-tp2', TP3:'oc-tp3' };
-    const ico = { SL:'❌', TP1:'✅', TP2:'🏆', TP3:'⭐' };
-    return `<span class="j-outcome ${map[o]||''}">${ico[o]||''} ${o}</span>`;
-  };
   const fv = v => v ? parseFloat(v).toFixed(2) : '—';
 
   list.innerHTML = t.map(x => {
     const date = x.trade_date ? new Date(x.trade_date + 'T12:00:00').toLocaleDateString('fr-FR') : '—';
     const d = (x.direction||'BUY').toUpperCase();
     const tps = [x.tp1, x.tp2, x.tp3].filter(Boolean).map(v => parseFloat(v).toFixed(2)).join(' / ') || '—';
+    const cur = x.outcome || '';
     return `<div class="j-row">
       <div class="j-cell date">${date}</div>
       <div class="j-cell asset">${x.asset||'—'}</div>
       <div class="j-cell dir ${d==='BUY'?'b':'s'}">${d}</div>
       <div class="j-cell prices">${fv(x.entry)}<br><span style="color:var(--red);font-size:9px">SL ${fv(x.sl)}</span></div>
       <div class="j-cell" style="font-size:10px;color:rgba(255,255,255,0.3);line-height:1.6">${tps}</div>
-      <div>${outcomeLabel(x.outcome)}</div>
+      <div>
+        <select onchange="updateOutcome(${x.id},this.value)" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;padding:4px 8px;border-radius:8px;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer">
+          <option value="" ${cur===''?'selected':''}>⏳ En cours</option>
+          <option value="TP1" ${cur==='TP1'?'selected':''}>✅ TP1</option>
+          <option value="TP2" ${cur==='TP2'?'selected':''}>🏆 TP2</option>
+          <option value="TP3" ${cur==='TP3'?'selected':''}>⭐ TP3</option>
+          <option value="SL"  ${cur==='SL' ?'selected':''}>❌ SL</option>
+        </select>
+      </div>
       <div><button class="j-del" onclick="deleteTrade(${x.id})" title="Supprimer">✕</button></div>
     </div>`;
   }).join('');
@@ -406,6 +409,12 @@ async function loadPersonal() {
 async function deleteTrade(id) {
   if (!confirm('Supprimer ce trade ?')) return;
   await SB2.from('personal_trades').delete().eq('id', id);
+  loadPersonal();
+}
+
+async function updateOutcome(id, outcome) {
+  const result = outcome === 'SL' ? 'perdant' : outcome ? 'gagnant' : 'en_cours';
+  await SB2.from('personal_trades').update({ outcome: outcome || null, result }).eq('id', id);
   loadPersonal();
 }
 
