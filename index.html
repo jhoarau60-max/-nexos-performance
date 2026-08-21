@@ -105,6 +105,15 @@
     .j-del { background:none; border:none; color:rgba(255,255,255,0.15); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; transition:color 0.2s; }
     .j-del:hover { color:var(--red); }
 
+    /* Meta ligne (risque, R:R, raison, émotion) */
+    .j-meta-row { padding:0 0 10px; margin-top:-2px; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .j-meta-row:last-of-type { border-bottom:none; }
+    .j-tags { display:flex; flex-wrap:wrap; gap:6px; }
+    .j-tag { font-size:9.5px; font-family:'DM Mono',monospace; color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:2px 7px; }
+    .j-tag b { color:rgba(255,255,255,0.65); font-weight:600; }
+    .j-tag.rr-good { color:var(--green); border-color:rgba(0,212,170,0.2); }
+    .j-tag.rr-bad { color:var(--red); border-color:rgba(255,77,109,0.2); }
+
     /* Modal */
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
     .modal { background:#0f1419; border:1px solid rgba(59,130,246,0.25); border-radius:16px; padding:28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
@@ -281,6 +290,37 @@
         <label>P&amp;L réalisé ($)</label>
         <input type="number" id="f-pnl" step="0.01" placeholder="ex: 45.20 ou -12.00">
       </div>
+      <div class="form-row">
+        <label>Risque (%)</label>
+        <input type="number" id="f-risk" step="0.1" placeholder="ex: 1">
+      </div>
+      <div class="form-row">
+        <label>R:R visé</label>
+        <input type="number" id="f-rr" step="0.1" placeholder="ex: 3">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <label>Raison d'entrée</label>
+      <select id="f-reason">
+        <option value="">— Choisir —</option>
+        <option value="Cassure structure">Cassure structure (BOS/CHoCH)</option>
+        <option value="Rejet zone">Rejet de zone (OB/support/résistance)</option>
+        <option value="OTE / Fibonacci">OTE / Fibonacci</option>
+        <option value="Sweep liquidité">Sweep de liquidité</option>
+        <option value="FVG">Fair Value Gap</option>
+        <option value="Autre">Autre</option>
+      </select>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <label>État émotionnel</label>
+      <select id="f-emotion">
+        <option value="">— Choisir —</option>
+        <option value="Calme">😌 Calme / discipliné</option>
+        <option value="Confiant">🎯 Confiant</option>
+        <option value="Stressé">😰 Stressé</option>
+        <option value="Revenge">😤 Revenge trade</option>
+        <option value="Impatient">⏱️ Impatient</option>
+      </select>
     </div>
     <div class="form-actions">
       <button class="btn-cancel" onclick="closeModal()">Annuler</button>
@@ -354,7 +394,7 @@ async function load() {
 /* ── Journal personnel ── */
 async function loadPersonal() {
   const { data: pt } = await SB2.from('personal_trades')
-    .select('id,trade_date,direction,asset,entry,sl,tp1,tp2,tp3,outcome,pnl_usd,exit_price')
+    .select('id,trade_date,direction,asset,entry,sl,tp1,tp2,tp3,outcome,pnl_usd,exit_price,risk_pct,rr_target,entry_reason,emotional_state')
     .order('trade_date',{ascending:false}).limit(50);
 
   const t = pt || [];
@@ -392,6 +432,7 @@ async function loadPersonal() {
   if (!total) { list.innerHTML = '<div class="empty">Aucun trade — clique sur "+ Ajouter trade" pour commencer !</div>'; return; }
 
   const fv = v => v ? parseFloat(v).toFixed(2) : '—';
+  const emotionMap = { Calme:'😌 Calme', Confiant:'🎯 Confiant', Stressé:'😰 Stressé', Revenge:'😤 Revenge', Impatient:'⏱️ Impatient' };
 
   list.innerHTML = t.map(x => {
     const date = x.trade_date ? new Date(x.trade_date + 'T12:00:00').toLocaleDateString('fr-FR') : '—';
@@ -402,6 +443,29 @@ async function loadPersonal() {
     const pnlHtml = pnl != null
       ? `<span class="${pnl >= 0 ? 'j-pnl-pos' : 'j-pnl-neg'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} $</span>`
       : '<span style="color:rgba(255,255,255,0.15);font-size:10px">—</span>';
+
+    // R:R réel (calculé depuis entrée/SL/sortie effective)
+    let rrActual = null;
+    const entryV = parseFloat(x.entry), slV = parseFloat(x.sl);
+    const riskV = (entryV && slV) ? Math.abs(entryV - slV) : null;
+    if (riskV) {
+      let exitV = null;
+      if (cur === 'TP1') exitV = parseFloat(x.tp1);
+      else if (cur === 'TP2') exitV = parseFloat(x.tp2);
+      else if (cur === 'TP3') exitV = parseFloat(x.tp3);
+      else if (cur === 'MAN') exitV = parseFloat(x.exit_price);
+      else if (cur === 'SL') rrActual = -1;
+      if (exitV) rrActual = (d==='BUY' ? (exitV-entryV) : (entryV-exitV)) / riskV;
+    }
+
+    const tags = [];
+    if (x.risk_pct) tags.push(`<span class="j-tag">Risque <b>${parseFloat(x.risk_pct)}%</b></span>`);
+    if (x.rr_target) tags.push(`<span class="j-tag">R:R visé <b>${parseFloat(x.rr_target).toFixed(1)}</b></span>`);
+    if (rrActual !== null) tags.push(`<span class="j-tag ${rrActual>=0?'rr-good':'rr-bad'}">R:R réel <b>${rrActual>=0?'+':''}${rrActual.toFixed(1)}</b></span>`);
+    if (x.entry_reason) tags.push(`<span class="j-tag">${x.entry_reason}</span>`);
+    if (x.emotional_state) tags.push(`<span class="j-tag">${emotionMap[x.emotional_state]||x.emotional_state}</span>`);
+    const metaHtml = tags.length ? `<div class="j-meta-row"><div class="j-tags">${tags.join('')}</div></div>` : '';
+
     return `<div class="j-row">
       <div class="j-cell date">${date}</div>
       <div class="j-cell asset">${x.asset||'—'}</div>
@@ -420,7 +484,7 @@ async function loadPersonal() {
       </div>
       <div>${pnlHtml}</div>
       <div><button class="j-del" onclick="deleteTrade(${x.id})" title="Supprimer">✕</button></div>
-    </div>`;
+    </div>${metaHtml}`;
   }).join('');
 }
 
@@ -443,8 +507,10 @@ function openModal() {
 }
 function closeModal() {
   document.getElementById('modal').style.display = 'none';
-  ['f-entry','f-sl','f-tp1','f-tp2','f-tp3','f-exit','f-pnl'].forEach(id => document.getElementById(id).value = '');
+  ['f-entry','f-sl','f-tp1','f-tp2','f-tp3','f-exit','f-pnl','f-risk','f-rr'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-outcome').value = '';
+  document.getElementById('f-reason').value = '';
+  document.getElementById('f-emotion').value = '';
 }
 
 async function submitTrade() {
@@ -459,12 +525,17 @@ async function submitTrade() {
   const direction  = document.getElementById('f-dir').value;
   const asset      = document.getElementById('f-asset').value;
   const trade_date = document.getElementById('f-date').value;
+  const risk_pct   = parseFloat(document.getElementById('f-risk').value) || null;
+  const rr_target  = parseFloat(document.getElementById('f-rr').value)   || null;
+  const entry_reason    = document.getElementById('f-reason').value || null;
+  const emotional_state = document.getElementById('f-emotion').value || null;
   const result = outcome === 'SL' ? 'perdant' : outcome ? 'gagnant' : 'en cours';
 
   const { error } = await SB2.from('personal_trades').insert({
     trade_date, direction, asset, entry, sl, tp1, tp2, tp3, outcome, result,
     exit_price: exit_price || null,
     pnl_usd: isNaN(pnl_usd) ? null : pnl_usd,
+    risk_pct, rr_target, entry_reason, emotional_state,
     details: `${asset} ${direction} @ ${entry}`
   });
   if (error) { alert('Erreur : ' + error.message); return; }
